@@ -14,10 +14,10 @@ def homepage():
     return render_template ("home.html",pets = pets)
 
 
-@app.route("/About page")
+@app.route("/about page")
 def About_page():
     return render_template("about.html")
-@app.route("/details/<int: pet_id>")
+@app.route("/details/<int:pet_id>")
 def pet_details (pet_id):
     pet = next((pet for pet in pets if pet["id"] == pet_id), None)
     if pet is None:
@@ -27,4 +27,4 @@ def pet_details (pet_id):
 
 if __name__ == "__main__":
    
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=3000)

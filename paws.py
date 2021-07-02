@@ -16,12 +16,14 @@ def home():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     form = LoginForm()
-    if form.is_submitted():
-        print("Submitted")
-    if form.validate():
-        print("Valid")
     if form.validate_on_submit():
         print("Submitted and Valid")
+        print("Email", form.email.data)
+        print("password", form.password.data)
+    elif form.errors:
+        print(form.errors.items())
+        print(form.email.errors)
+        print(form.password.errors)
     return render_template("login.html", form = form)
 
 if __name__ == "__main__":

@@ -1,30 +1,54 @@
-from flask import Flask, render_template
-from forms import LoginForm
-app = Flask(__name__)
+"""Flask Application for Paws Rescue Center."""
+from flask import Flask, render_template, abort
+from forms import SignUpForm
 
+app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dfewfew123213rwdsgert34tgfd1234trgf'
 
-users = {
-    "archie.andrews@email.com": "football4life",
-    "veronica.lodge@email.com": "fashiondiva"
-}
+"""Information regarding the Pets in the System."""
+pets = [
+            {"id": 1, "name": "Nelly", "age": "5 weeks", "bio": "I am a tiny kitten rescued by the good people at Paws Rescue Center. I love squeaky toys and cuddles."},
+            {"id": 2, "name": "Yuki", "age": "8 months", "bio": "I am a handsome gentle-cat. I like to dress up in bow ties."},
+            {"id": 3, "name": "Basker", "age": "1 year", "bio": "I love barking. But, I love my friends more."},
+            {"id": 4, "name": "Mr. Furrkins", "age": "5 years", "bio": "Probably napping."}, 
+        ]
+
+"""Information regarding the Users in the System."""
+users = [
+            {"id": 1, "full_name": "Pet Rescue Team", "email": "team@pawsrescue.co", "password": "adminpass"},
+        ]
+
 
 @app.route("/")
-def home():
-    return render_template("home.html")
+def homepage():
+    """View function for Home Page."""
+    return render_template("home.html", pets = pets)
 
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    form = LoginForm()
+
+@app.route("/about")
+def about():
+    """View function for About Page."""
+    return render_template("about.html")
+
+
+@app.route("/details/<int:pet_id>")
+def pet_details(pet_id):
+    """View function for Showing Details of Each Pet."""
+    pet = next((pet for pet in pets if pet["id"] == pet_id), None)
+    if pet is None:
+        abort(404, description="No Pet was Found with the given ID")
+    return render_template("details.html", pet = pet)
+
+
+@app.route("/signup", methods=["POST", "GET"])
+def signup():
+    """View function for Showing Details of Each Pet."""
+    form = SignUpForm()
     if form.validate_on_submit():
-        print("Submitted and Valid")
-        print("Email", form.email.data)
-        print("password", form.password.data)
-    elif form.errors:
-        print(form.errors.items())
-        print(form.email.errors)
-        print(form.password.errors)
-    return render_template("login.html", form = form)
+        new_user = {"id": len(users)+1, "full_name": form.full_name.data, "email": form.email.data, "password": form.password.data}
+        users.append(new_user)
+        return render_template("signup.html", message = "Successfully signed up")
+    return render_template("signup.html", form = form)
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -1,6 +1,7 @@
 """Flask Application for Paws Rescue Center."""
 from flask import Flask, render_template, abort
 from forms import SignUpForm, LoginForm
+from flask import session, redirect, url_for
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dfewfew123213rwdsgert34tgfd1234trgf'
@@ -62,9 +63,16 @@ def login():
                 print("success")
                 return render_template("login.html",  message="successfully login")
             else:
+                session['user'] = user
                 print("failed", user["email"], user["password"])
                 return render_template("login.html",form=form, message="wrong credentials")
     return render_template("login.html", form=form)
+@app.route("/logout")
+def logout():
+    if 'user' in session:
+        session.pop('user')
+    return redirect(url_for('homepage',_scheme='https',_external=True))
+
 
 
 if __name__ == "__main__":

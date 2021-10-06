@@ -2,9 +2,55 @@
 from flask import Flask, render_template, abort
 from forms import SignUpForm, LoginForm
 from flask import session, redirect, url_for
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dfewfew123213rwdsgert34tgfd1234trgf'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///paws.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+""" model for pets"""
+class Pet(db.Model):
+    id = db.Column(db.Integer,primary_key=True)
+    name = db.Column(db.String,unique = True)
+    age = db.Column(db.String)
+    bio = db.Column(db.String)
+    posted_by = db.Column(db.String,db.ForeignKey("user.id"))
+
+class User(db.Model):
+    id = db.Column(db.Integer,primary_key =True)
+    full_name = db.Column(db.String)
+    email = db.Column(db.String,unique=True, nullable=False)
+    password = db.Column(db.String)
+    pets = db.relationship('Pet',backref = 'user')
+
+db.create_all()
+
+# Create "team" user and add it to session
+team = User(full_name = "Pet Rescue Team", email = "team@petrescue.co", password = "adminpass")
+db.session.add(team)
+
+# Create all pets
+nelly = Pet(name = "Nelly", age = "5 weeks", bio = "I am a tiny kitten rescued by the good people at Paws Rescue Center. I love squeaky toys and cuddles.")
+yuki = Pet(name = "Yuki", age = "8 months", bio = "I am a handsome gentle-cat. I like to dress up in bow ties.")
+basker = Pet(name = "Basker", age = "1 year", bio = "I love barking. But, I love my friends more.")
+mrfurrkins = Pet(name = "Mr. Furrkins", age = "5 years", bio = "Probably napping.")
+
+# Add all pets to the session
+db.session.add(nelly)
+db.session.add(yuki)
+db.session.add(basker)
+db.session.add(mrfurrkins)
+
+# Commit changes in the session
+try:
+    db.session.commit()
+except Exception as e:
+    db.session.rollback()
+finally:
+    db.session.close()
+
 
 """Information regarding the Pets in the System."""
 pets = [
@@ -23,6 +69,7 @@ users = [
 
 @app.route("/")
 def homepage():
+    pets = Pet.query.all()
     """View function for Home Page."""
     return render_template("home.html", pets=pets)
 
@@ -36,7 +83,7 @@ def about():
 @app.route("/details/<int:pet_id>")
 def pet_details(pet_id):
     """View function for Showing Details of Each Pet."""
-    pet = next((pet for pet in pets if pet["id"] == pet_id), None)
+    Pet.query.get(pet_id)
     if pet is None:
         abort(404, description="No Pet was Found with the given ID")
     return render_template("details.html", pet=pet)
@@ -47,10 +94,21 @@ def signup():
     """View function for Showing Details of Each Pet."""
     form = SignUpForm()
     if form.validate_on_submit():
-        new_user = {"id": len(users) + 1, "full_name": form.full_name.data, "email": form.email.data,
+        """new_user = {"id": len(users) + 1, "full_name": form.full_name.data, "email": form.email.data,
                     "password": form.password.data}
-        users.append(new_user)
-        return render_template("signup.html", message="Successfully signed up")
+        users.append(new_user)"""
+        new_user = User(full_name = form.full_name.data,email=form.email.data,password = form.password.data)
+        db.session.add(new_user)
+        try:
+            db.session.commit()
+        except Exception as e:
+            print(e)
+            db.session.rollback()
+            return render_template("signup.html",form=form, message="This Email already exit in system! Please Login instead.")
+        finally:
+            db.session.close()
+        return render_template("signup.html",message = "Successfully Signed up.")
+
     return render_template("signup.html", form=form)
 
 
@@ -58,21 +116,20 @@ def signup():
 def login():
     form = LoginForm()
     if form.validate_on_submit():
-        for user in users:
-            if user["email"] == form.email.data and user["password"] == form.password.data:
-                print("success")
-                return render_template("login.html",  message="successfully login")
-            else:
-                session['user'] = user
-                print("failed", user["email"], user["password"])
-                return render_template("login.html",form=form, message="wrong credentials")
+        user = User.query.filter_by(email=form.email.data,password=form.password.data).first()
+        if user is None:
+            return render_template("login.html", form=form, message="wrong credentials")
+        else:
+            session['user'] = user.id
+            return render_template("login.html", message="successfully login")
     return render_template("login.html", form=form)
+
+
 @app.route("/logout")
 def logout():
     if 'user' in session:
         session.pop('user')
-    return redirect(url_for('homepage',_scheme='https',_external=True))
-
+    return redirect(url_for('homepage', _scheme='https', _external=True))
 
 
 if __name__ == "__main__":
